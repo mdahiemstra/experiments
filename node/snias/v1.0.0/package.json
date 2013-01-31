@@ -1,0 +1,14 @@
+{
+    "name": "S.N.I.A.S"
+  , "version": "1.0.0"
+  , "description": "Single Node Instance Application Server"
+  , "author": "Michel Hiemstra <mhiemstra@php.net>"
+  , "dependencies" : {
+    "node-static"   :  "0.6.5",
+    "rbytes" :  "0.0.2",
+    "redis" :  "0.8.2",
+    "sockjs"    :  "0.3.4"
+  } 
+  , "license": "Private"
+  , "engines": { "node": ">=0.8" }
+}

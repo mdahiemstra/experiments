@@ -1,0 +1,26 @@
+{
+    "sock": {
+        "listen": {
+            "port": 5000,
+            "environment": "staging"
+        },
+        "client_url": "http://cdn.sockjs.org/sockjs-0.3.min.js",
+        "response_limit": 128000,
+        "websocket": true,
+        "jsessionid": true,
+        "heartbeat_delay": 15000,
+        "disconnect_delay": 5000,
+        "prefix": "/echo"
+    },
+    "app": {
+        "saveToRedis": true,
+        "stats": {
+            "enabled": true,
+            "interval": 3,
+            "output": "redis",
+            "redis_host": "localhost",
+            "redis_port": 6379,
+            "redis_db": 0
+        }
+    }
+}
