@@ -8,7 +8,7 @@ version: v1.0.0
 
 
 (function() {
-  var config, http, nstatic, payload_data, redis, sockjs, sockjs_options, sockjs_server, static_server;
+  var config, http, nstatic, payload_data, redis, redis_connections, sockjs, sockjs_options, sockjs_server, static_server;
 
   http = require('http');
 
@@ -21,9 +21,10 @@ version: v1.0.0
   redis = require('redis');
 
   exports.libs = {
-    Redis: redis,
-    config: config
+    Config: config
   };
+
+  redis_connections = [];
 
   sockjs_options = {
     sockjs_url: config.sock.client_url,
@@ -32,7 +33,11 @@ version: v1.0.0
     jsessionid: config.sock.jsessionid,
     heartbeat_delay: config.sock.heartbeat_delay,
     disconnect_delay: config.sock.disconnect_delay,
-    log: function(s, e) {}
+    log: function(s, e) {
+      if (e === "error") {
+        return console.log("SockJS Error: " + e);
+      }
+    }
   };
 
   sockjs_server = sockjs.createServer(sockjs_options);
@@ -61,6 +66,13 @@ version: v1.0.0
             }
           }
           if (typeof client_payload.data === "object") {
+            if (client_payload.data.site_id !== "null" && Application !== false) {
+              if (!redis_connections[client_payload.data.site_id]) {
+                redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost");
+                redis_connections[client_payload.data.site_id].select(1);
+              }
+              exports.libs.Redis = redis_connections[client_payload.data.site_id];
+            }
             if (client_payload.data.message !== "null" && Application !== false) {
               return Application.prototype.onMessage(client_payload.data.message);
             }

@@ -10,7 +10,9 @@ config  = require './config/run'
 redis   = require 'redis'
 
 # export the libraries
-exports.libs = { Redis: redis, config: config }
+exports.libs = { Config: config }
+
+redis_connections = []
 
 sockjs_options = {
     sockjs_url:       config.sock.client_url,
@@ -20,7 +22,8 @@ sockjs_options = {
     heartbeat_delay:  config.sock.heartbeat_delay,
     disconnect_delay: config.sock.disconnect_delay,
     log: (s, e) ->
-        #console.log("Log: #{e}")
+        if e is "error"
+          console.log("SockJS Error: #{e}")
 }
 
 sockjs_server = sockjs.createServer(sockjs_options)
@@ -39,6 +42,7 @@ sockjs_server.on "connection", (conn) ->
                 payload_data = client_payload
                 payload_data.session_start = Math.round(new Date().getTime() / 1000)
 
+                # start application
                 if typeof client_payload.application is "string"
                     if Application is false
                         try
@@ -49,6 +53,16 @@ sockjs_server.on "connection", (conn) ->
                             return
 
                 if typeof client_payload.data is "object"
+                    # setup redis connection if not present for site
+                    if client_payload.data.site_id isnt "null" and Application isnt false
+                        unless redis_connections[client_payload.data.site_id]
+                            redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost")
+                            redis_connections[client_payload.data.site_id].select(1)
+
+                        # export redis connection
+                        exports.libs.Redis = redis_connections[client_payload.data.site_id]
+
+                    # handle messages
                     if client_payload.data.message isnt "null" and Application isnt false
                         Application.prototype.onMessage(client_payload.data.message)
 
