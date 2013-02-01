@@ -1,6 +1,7 @@
 {
     "sock": {
         "listen": {
+            "host": "localhost",
             "port": 5000,
             "environment": "staging"
         },
