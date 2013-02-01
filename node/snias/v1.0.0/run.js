@@ -8,7 +8,7 @@ version: v1.0.0
 
 
 (function() {
-  var Instance_Counter, config, http, nstatic, payload_data, redis, redis_connections, site_config, sockjs, sockjs_options, sockjs_server, static_server;
+  var config, http, nstatic, payload_data, redis, redis_connections, site_config, sockjs, sockjs_options, sockjs_server, static_server;
 
   http = require('http');
 
@@ -46,13 +46,11 @@ version: v1.0.0
 
   payload_data = {};
 
-  Instance_Counter = false;
-
   sockjs_server.on("connection", function(conn) {
     var Application_Instance;
     Application_Instance = false;
     conn.on("data", function(message) {
-      var client_payload;
+      var client_payload, site_configuration;
       try {
         client_payload = JSON.parse(message);
         if (typeof client_payload === "object") {
@@ -71,11 +69,16 @@ version: v1.0.0
           }
           if (typeof client_payload.data === "object") {
             if (client_payload.data.site_id !== "null" && Application_Instance !== false) {
+              if (!site_config[payload_data.data.site_id]) {
+                site_configuration = require('./config/sites/' + config.environment);
+                site_config[payload_data.data.site_id] = eval('site_configuration.sites.site_' + payload_data.data.site_id);
+              }
               if (!redis_connections[client_payload.data.site_id]) {
-                redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost");
-                redis_connections[client_payload.data.site_id].select(1);
+                redis_connections[client_payload.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, site_config[payload_data.data.site_id].redis_master_host);
+                redis_connections[client_payload.data.site_id].select(site_config[payload_data.data.site_id].redis_db);
               }
               exports.libs.Redis = redis_connections[payload_data.data.site_id];
+              exports.libs.SiteConfig = site_config[payload_data.data.site_id];
             }
             if (client_payload.data.message !== "null" && Application_Instance !== false) {
               return Application_Instance.prototype.onMessage(client_payload.data.message);

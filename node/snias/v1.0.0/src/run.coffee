@@ -31,9 +31,6 @@ sockjs_server = sockjs.createServer(sockjs_options)
 
 payload_data = {}
 
-# for debugging
-Instance_Counter = false;
-
 sockjs_server.on "connection", (conn) ->
 
   Application_Instance = false
@@ -58,20 +55,22 @@ sockjs_server.on "connection", (conn) ->
 
         if typeof client_payload.data is "object"
           if client_payload.data.site_id isnt "null" and Application_Instance isnt false
+
+            unless site_config[payload_data.data.site_id]
+              site_configuration = require './config/sites/' + config.environment
+              site_config[payload_data.data.site_id] = eval 'site_configuration.sites.site_' + payload_data.data.site_id
+
             # setup redis connection if not present for site
             unless redis_connections[client_payload.data.site_id]
-              redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost")
-              redis_connections[client_payload.data.site_id].select(1)
-
-            # unless site_config[payload_data.data.site_id]
-            #   site_configuration = require './config/sites/' + config.environment
-            #   site_config[payload_data.data.site_id] = eval 'site_configuration.sites.site_' + payload_data.data.site_id
+              redis_connections[client_payload.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, 
+                                                                                  site_config[payload_data.data.site_id].redis_master_host)
+              redis_connections[client_payload.data.site_id].select(site_config[payload_data.data.site_id].redis_db)
 
             # export redis connection
             exports.libs.Redis = redis_connections[payload_data.data.site_id]
 
             # export site configuration
-            #exports.libs.SiteConfig = client_payload.data.site_id
+            exports.libs.SiteConfig = site_config[payload_data.data.site_id]
 
           # handle messages
           if client_payload.data.message isnt "null" and Application_Instance isnt false
