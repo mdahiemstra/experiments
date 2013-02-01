@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>SockJS</title>
+    </head>
+    <script src="http://cdn.sockjs.org/sockjs-0.3.min.js"></script>
+    <script>
+       var sock = new SockJS('http://localhost:5000/echo');
+
+       function start() {
+
+           sock.onopen = function() {
+              console.log('Connected')
+              sock.send('{"application": "test", "data": {"message": "Hello World"}}');
+
+              sock.send('{"data": {"message": "Hello Second World"}}');
+           };
+       }
+       window.onload = start;
+    </script>
+    <body>
+        See console.
+    </body>
+</html>
