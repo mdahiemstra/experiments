@@ -8,7 +8,7 @@ version: v1.0.0
 
 
 (function() {
-  var config, http, nstatic, payload_data, redis, redis_connections, sockjs, sockjs_options, sockjs_server, static_server;
+  var Instance_Counter, config, http, nstatic, payload_data, redis, redis_connections, site_config, sockjs, sockjs_options, sockjs_server, static_server;
 
   http = require('http');
 
@@ -25,6 +25,8 @@ version: v1.0.0
   };
 
   redis_connections = [];
+
+  site_config = [];
 
   sockjs_options = {
     sockjs_url: config.sock.client_url,
@@ -44,9 +46,11 @@ version: v1.0.0
 
   payload_data = {};
 
+  Instance_Counter = false;
+
   sockjs_server.on("connection", function(conn) {
-    var Application;
-    Application = false;
+    var Application_Instance;
+    Application_Instance = false;
     conn.on("data", function(message) {
       var client_payload;
       try {
@@ -55,10 +59,10 @@ version: v1.0.0
           payload_data = client_payload;
           payload_data.session_start = Math.round(new Date().getTime() / 1000);
           if (typeof client_payload.application === "string") {
-            if (Application === false) {
+            if (Application_Instance === false) {
               try {
-                Application = require('./applications/' + client_payload.application);
-                Application.prototype.onConnect();
+                Application_Instance = require('./applications/' + client_payload.application);
+                Application_Instance.prototype.onConnect();
               } catch (error) {
                 console.log("Application %s not found.", client_payload.application);
                 return;
@@ -66,15 +70,15 @@ version: v1.0.0
             }
           }
           if (typeof client_payload.data === "object") {
-            if (client_payload.data.site_id !== "null" && Application !== false) {
+            if (client_payload.data.site_id !== "null" && Application_Instance !== false) {
               if (!redis_connections[client_payload.data.site_id]) {
                 redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost");
                 redis_connections[client_payload.data.site_id].select(1);
               }
-              exports.libs.Redis = redis_connections[client_payload.data.site_id];
+              exports.libs.Redis = redis_connections[payload_data.data.site_id];
             }
-            if (client_payload.data.message !== "null" && Application !== false) {
-              return Application.prototype.onMessage(client_payload.data.message);
+            if (client_payload.data.message !== "null" && Application_Instance !== false) {
+              return Application_Instance.prototype.onMessage(client_payload.data.message);
             }
           }
         }
@@ -83,8 +87,8 @@ version: v1.0.0
       }
     });
     return conn.on("close", function() {
-      if (Application !== false) {
-        return Application.prototype.onDisconnect();
+      if (Application_Instance !== false) {
+        return Application_Instance.prototype.onDisconnect();
       }
     });
   });

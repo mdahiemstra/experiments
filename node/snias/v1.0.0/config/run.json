@@ -1,9 +1,9 @@
 {
+    "environment": "development",
     "sock": {
         "listen": {
             "host": "localhost",
-            "port": 5000,
-            "environment": "staging"
+            "port": 5000
         },
         "client_url": "http://cdn.sockjs.org/sockjs-0.3.min.js",
         "response_limit": 128000,

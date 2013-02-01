@@ -13,65 +13,76 @@ redis   = require 'redis'
 exports.libs = { Config: config }
 
 redis_connections = []
+site_config = []
 
 sockjs_options = {
-    sockjs_url:       config.sock.client_url,
-    response_limit:   config.sock.response_limit,
-    websocket:        config.sock.websocket,
-    jsessionid:       config.sock.jsessionid,
-    heartbeat_delay:  config.sock.heartbeat_delay,
-    disconnect_delay: config.sock.disconnect_delay,
-    log: (s, e) ->
-        if e is "error"
-          console.log("SockJS Error: #{e}")
+  sockjs_url:       config.sock.client_url,
+  response_limit:   config.sock.response_limit,
+  websocket:        config.sock.websocket,
+  jsessionid:       config.sock.jsessionid,
+  heartbeat_delay:  config.sock.heartbeat_delay,
+  disconnect_delay: config.sock.disconnect_delay,
+  log: (s, e) ->
+    if e is "error"
+      console.log("SockJS Error: #{e}")
 }
 
 sockjs_server = sockjs.createServer(sockjs_options)
 
 payload_data = {}
 
+# for debugging
+Instance_Counter = false;
+
 sockjs_server.on "connection", (conn) ->
 
-    Application = false
+  Application_Instance = false
 
-    conn.on "data", (message) ->
-        try
-            client_payload = JSON.parse(message)
+  conn.on "data", (message) ->
+    try
+      client_payload = JSON.parse(message)
 
-            if typeof client_payload is "object"
-                payload_data = client_payload
-                payload_data.session_start = Math.round(new Date().getTime() / 1000)
+      if typeof client_payload is "object"
+        payload_data = client_payload
+        payload_data.session_start = Math.round(new Date().getTime() / 1000)
 
-                # start application
-                if typeof client_payload.application is "string"
-                    if Application is false
-                        try
-                            Application = require './applications/' + client_payload.application
-                            Application.prototype.onConnect()
-                        catch error
-                            console.log "Application %s not found.", client_payload.application
-                            return
+        # start application
+        if typeof client_payload.application is "string"
+          if Application_Instance is false
+            try
+              Application_Instance = require './applications/' + client_payload.application
+              Application_Instance.prototype.onConnect()
+            catch error
+              console.log "Application %s not found.", client_payload.application
+              return
 
-                if typeof client_payload.data is "object"
-                    # setup redis connection if not present for site
-                    if client_payload.data.site_id isnt "null" and Application isnt false
-                        unless redis_connections[client_payload.data.site_id]
-                            redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost")
-                            redis_connections[client_payload.data.site_id].select(1)
+        if typeof client_payload.data is "object"
+          if client_payload.data.site_id isnt "null" and Application_Instance isnt false
+            # setup redis connection if not present for site
+            unless redis_connections[client_payload.data.site_id]
+              redis_connections[client_payload.data.site_id] = redis.createClient(6379, "localhost")
+              redis_connections[client_payload.data.site_id].select(1)
 
-                        # export redis connection
-                        exports.libs.Redis = redis_connections[client_payload.data.site_id]
+            # unless site_config[payload_data.data.site_id]
+            #   site_configuration = require './config/sites/' + config.environment
+            #   site_config[payload_data.data.site_id] = eval 'site_configuration.sites.site_' + payload_data.data.site_id
 
-                    # handle messages
-                    if client_payload.data.message isnt "null" and Application isnt false
-                        Application.prototype.onMessage(client_payload.data.message)
+            # export redis connection
+            exports.libs.Redis = redis_connections[payload_data.data.site_id]
 
-        catch Exception
-            console.log 'Error: Unknown action %s', Exception
+            # export site configuration
+            #exports.libs.SiteConfig = client_payload.data.site_id
 
-    conn.on "close", ->
-        unless Application is false
-            Application.prototype.onDisconnect()
+          # handle messages
+          if client_payload.data.message isnt "null" and Application_Instance isnt false
+              Application_Instance.prototype.onMessage(client_payload.data.message)
+
+    catch Exception
+      console.log 'Error: Unknown action %s', Exception
+
+  conn.on "close", ->
+    unless Application_Instance is false
+      Application_Instance.prototype.onDisconnect()
 
 static_server = http.createServer()
 
