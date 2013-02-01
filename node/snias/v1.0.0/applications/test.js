@@ -7,7 +7,7 @@
   Super = require('../run');
 
   /*
-      Libraries available in Super, e.g. Super.libs.Redis
+      Libraries available in Super, e.g. Super.libs.Redis, Super.libs.SiteConfig
   */
 
 
