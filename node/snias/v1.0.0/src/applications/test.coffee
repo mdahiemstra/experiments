@@ -1,10 +1,13 @@
 console.log('Started application test\n------------------------')
 
-#Initialize = klass -> console.log('yes')
-#Initialize = -> console.log('test')
+Super = require '../run'
+
+###
+    Libraries available in Super, e.g. Super.libs.Redis
+###
 
 class Application
-    onConnect: -> 
+    onConnect: ->
         console.log 'Connected'
     onMessage: (message) ->
         console.log "Message received: #{message}"
