@@ -47,10 +47,13 @@ sockjs_server.on "connection", (conn) ->
         if typeof client_payload.application is "string"
           if Application_Instance is false
             try
-              Application_Instance = require './applications/' + client_payload.application
+              Application_Instance = require './applications/' + payload_data.application
               Application_Instance.prototype.onConnect()
+
+              # debugging to client console
+              conn.write('Application ' + payload_data.application + ' loaded')
             catch error
-              console.log "Application %s not found.", client_payload.application
+              console.log "Application %s not found.", payload_data.application
               return
 
         if typeof client_payload.data is "object"
@@ -60,11 +63,23 @@ sockjs_server.on "connection", (conn) ->
               site_configuration = require './config/sites/' + config.environment
               site_config[payload_data.data.site_id] = eval 'site_configuration.sites.site_' + payload_data.data.site_id
 
+              # debugging to client console
+              conn.write('Site configuration for site ' + payload_data.data.site_id + ' loaded')
+            else
+              # debugging to client console
+              conn.write('Site configuration for site ' + payload_data.data.site_id + ' reused')
+
             # setup redis connection if not present for site
-            unless redis_connections[client_payload.data.site_id]
-              redis_connections[client_payload.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, 
+            unless redis_connections[payload_data.data.site_id]
+              redis_connections[payload_data.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, 
                                                                                   site_config[payload_data.data.site_id].redis_master_host)
-              redis_connections[client_payload.data.site_id].select(site_config[payload_data.data.site_id].redis_db)
+              redis_connections[payload_data.data.site_id].select(site_config[payload_data.data.site_id].redis_db)
+
+              # debugging to client console
+              conn.write('Redis connection for site ' + payload_data.data.site_id + ' established')
+            else
+              # debugging to client console
+              conn.write('Redis connection for site ' + payload_data.data.site_id + ' reused')
 
             # export redis connection
             exports.libs.Redis = redis_connections[payload_data.data.site_id]
@@ -74,7 +89,10 @@ sockjs_server.on "connection", (conn) ->
 
           # handle messages
           if client_payload.data.message isnt "null" and Application_Instance isnt false
-              Application_Instance.prototype.onMessage(client_payload.data.message)
+              Application_Instance.prototype.onMessage(payload_data.data.message)
+
+              # debugging to client console
+              conn.write(payload_data.data.message)
 
     catch Exception
       console.log 'Error: Unknown action %s', Exception

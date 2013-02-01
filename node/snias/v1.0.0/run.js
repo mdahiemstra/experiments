@@ -59,10 +59,11 @@ version: v1.0.0
           if (typeof client_payload.application === "string") {
             if (Application_Instance === false) {
               try {
-                Application_Instance = require('./applications/' + client_payload.application);
+                Application_Instance = require('./applications/' + payload_data.application);
                 Application_Instance.prototype.onConnect();
+                conn.write('Application ' + payload_data.application + ' loaded');
               } catch (error) {
-                console.log("Application %s not found.", client_payload.application);
+                console.log("Application %s not found.", payload_data.application);
                 return;
               }
             }
@@ -72,16 +73,23 @@ version: v1.0.0
               if (!site_config[payload_data.data.site_id]) {
                 site_configuration = require('./config/sites/' + config.environment);
                 site_config[payload_data.data.site_id] = eval('site_configuration.sites.site_' + payload_data.data.site_id);
+                conn.write('Site configuration for site ' + payload_data.data.site_id + ' loaded');
+              } else {
+                conn.write('Site configuration for site ' + payload_data.data.site_id + ' reused');
               }
-              if (!redis_connections[client_payload.data.site_id]) {
-                redis_connections[client_payload.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, site_config[payload_data.data.site_id].redis_master_host);
-                redis_connections[client_payload.data.site_id].select(site_config[payload_data.data.site_id].redis_db);
+              if (!redis_connections[payload_data.data.site_id]) {
+                redis_connections[payload_data.data.site_id] = redis.createClient(site_config[payload_data.data.site_id].redis_master_port, site_config[payload_data.data.site_id].redis_master_host);
+                redis_connections[payload_data.data.site_id].select(site_config[payload_data.data.site_id].redis_db);
+                conn.write('Redis connection for site ' + payload_data.data.site_id + ' established');
+              } else {
+                conn.write('Redis connection for site ' + payload_data.data.site_id + ' reused');
               }
               exports.libs.Redis = redis_connections[payload_data.data.site_id];
               exports.libs.SiteConfig = site_config[payload_data.data.site_id];
             }
             if (client_payload.data.message !== "null" && Application_Instance !== false) {
-              return Application_Instance.prototype.onMessage(client_payload.data.message);
+              Application_Instance.prototype.onMessage(payload_data.data.message);
+              return conn.write(payload_data.data.message);
             }
           }
         }

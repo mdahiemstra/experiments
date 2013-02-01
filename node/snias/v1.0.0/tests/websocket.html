@@ -10,11 +10,15 @@
        function start() {
 
            sock.onopen = function() {
-              console.log('Connected')
+              
+              // connect
               sock.send('{"application": "test", "data": {"message": "Hello World", "site_id": 1}}');
-              console.log('SEND: {"application": "test", "data": {"message": "Hello World", "site_id": 1}}');
+              // message
               sock.send('{"data": {"message": "Hello Second World", "site_id": 1}}');
-              console.log('SEND:{"data": {"message": "Hello Second World", "site_id": 1}}');
+
+              sock.onmessage = function (message) {
+                console.log(message);
+              }
            };
        }
        window.onload = start;
