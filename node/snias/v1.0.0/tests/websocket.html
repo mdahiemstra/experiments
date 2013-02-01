@@ -12,9 +12,9 @@
            sock.onopen = function() {
               
               // connect
-              sock.send('{"application": "test", "data": {"message": "Hello World", "site_id": 1}}');
+              //sock.send('{"application": "test", "data": {"message": "Hello World", "site_id": 1}}');
               // message
-              sock.send('{"data": {"message": "Hello Second World", "site_id": 1}}');
+              //sock.send('{"data": {"message": "Hello Second World", "site_id": 1}}');
 
               sock.onmessage = function (message) {
                 console.log(message);
@@ -24,6 +24,13 @@
        window.onload = start;
     </script>
     <body>
-        See console.
+        
+        <p>See console.</p>
+
+        <p>To launch a application type to console:</p>
+        <pre>sock.send('{"application": "test", "data": {"message": "Hello World", "site_id": 1}}');</pre>
+
+        <p>To send a message type to console:</p>
+        <pre>sock.send('{"data": {"message": "Hello Second World", "site_id": 1}}');</pre>
     </body>
 </html>

@@ -48,6 +48,7 @@ version: v1.0.0
 
   sockjs_server.on("connection", function(conn) {
     var Application_Instance;
+    conn.write('connected to SockJS');
     Application_Instance = false;
     conn.on("data", function(message) {
       var client_payload, site_configuration;

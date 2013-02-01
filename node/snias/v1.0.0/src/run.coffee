@@ -33,6 +33,9 @@ payload_data = {}
 
 sockjs_server.on "connection", (conn) ->
 
+  # debugging to client console
+  conn.write 'connected to SockJS'
+
   Application_Instance = false
 
   conn.on "data", (message) ->
@@ -64,10 +67,10 @@ sockjs_server.on "connection", (conn) ->
               site_config[payload_data.data.site_id] = eval 'site_configuration.sites.site_' + payload_data.data.site_id
 
               # debugging to client console
-              conn.write('Site configuration for site ' + payload_data.data.site_id + ' loaded')
+              conn.write 'Site configuration for site ' + payload_data.data.site_id + ' loaded'
             else
               # debugging to client console
-              conn.write('Site configuration for site ' + payload_data.data.site_id + ' reused')
+              conn.write 'Site configuration for site ' + payload_data.data.site_id + ' reused'
 
             # setup redis connection if not present for site
             unless redis_connections[payload_data.data.site_id]
@@ -76,10 +79,10 @@ sockjs_server.on "connection", (conn) ->
               redis_connections[payload_data.data.site_id].select(site_config[payload_data.data.site_id].redis_db)
 
               # debugging to client console
-              conn.write('Redis connection for site ' + payload_data.data.site_id + ' established')
+              conn.write 'Redis connection for site ' + payload_data.data.site_id + ' established'
             else
               # debugging to client console
-              conn.write('Redis connection for site ' + payload_data.data.site_id + ' reused')
+              conn.write 'Redis connection for site ' + payload_data.data.site_id + ' reused'
 
             # export redis connection
             exports.libs.Redis = redis_connections[payload_data.data.site_id]
