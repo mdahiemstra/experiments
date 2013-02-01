@@ -8,7 +8,7 @@ version: v1.0.0
 
 
 (function() {
-  var Application, config, http, nstatic, redis, run_app, sockjs, util;
+  var config, http, nstatic, payload_data, redis, sockjs, sockjs_options, sockjs_server, static_server;
 
   http = require('http');
 
@@ -20,21 +20,96 @@ version: v1.0.0
 
   redis = require('redis');
 
-  util = require('util');
+  exports.libs = {
+    Redis: redis,
+    config: config
+  };
 
-  run_app = 'test';
+  sockjs_options = {
+    sockjs_url: config.sock.client_url,
+    response_limit: config.sock.response_limit,
+    websocket: config.sock.websocket,
+    jsessionid: config.sock.jsessionid,
+    heartbeat_delay: config.sock.heartbeat_delay,
+    disconnect_delay: config.sock.disconnect_delay,
+    log: function(s, e) {}
+  };
+
+  sockjs_server = sockjs.createServer(sockjs_options);
+
+  payload_data = {};
+
+  sockjs_server.on("connection", function(conn) {
+    var Application;
+    Application = false;
+    conn.on("data", function(message) {
+      var client_payload;
+      try {
+        client_payload = JSON.parse(message);
+        if (typeof client_payload === "object") {
+          payload_data = client_payload;
+          payload_data.session_start = Math.round(new Date().getTime() / 1000);
+          if (typeof client_payload.application === "string") {
+            if (Application === false) {
+              try {
+                Application = require('./applications/' + client_payload.application);
+                Application.prototype.onConnect();
+              } catch (error) {
+                console.log("Application %s not found.", client_payload.application);
+                return;
+              }
+            }
+          }
+          if (typeof client_payload.data === "object") {
+            if (client_payload.data.message !== "null" && Application !== false) {
+              return Application.prototype.onMessage(client_payload.data.message);
+            }
+          }
+        }
+      } catch (Exception) {
+        return console.log('Error: Unknown action %s', Exception);
+      }
+    });
+    return conn.on("close", function() {
+      if (Application !== false) {
+        return Application.prototype.onDisconnect();
+      }
+    });
+  });
+
+  static_server = http.createServer();
+
+  static_server.addListener("request", function(req, res) {
+    return new nstatic.Server(__dirname).serve(req, res);
+  });
+
+  static_server.addListener("upgrade", function(req, res) {
+    return res.end();
+  });
+
+  sockjs_server.installHandlers(static_server, {
+    prefix: config.sock.prefix
+  });
 
   try {
-    Application = require('./applications/' + run_app);
-  } catch (error) {
-    console.log("Application " + run_app + " not found.");
-    return;
+    static_server.listen(config.sock.listen.port, config.sock.listen.host);
+    console.log("INFO: %s - SockJS started listening", new Date());
+  } catch (Exception) {
+    console.log("ERROR: %s - %s", new Date(), Exception);
   }
 
-  Application.prototype.onConnect();
+  process.once("exit", function(code) {
+    code = code || 0;
+    console.log("NOTICE: %s - SockJS exiting with code %s", new Date(), code);
+    return process.exit(code);
+  });
 
-  Application.prototype.onMessage('Testing the application');
+  process.on("SIGINT", function() {
+    return process.exit(2);
+  });
 
-  Application.prototype.onDisconnect();
+  process.on("SIGTERM", function() {
+    return process.exit(0);
+  });
 
 }).call(this);
