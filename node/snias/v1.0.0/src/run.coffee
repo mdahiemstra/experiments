@@ -8,21 +8,81 @@ sockjs  = require 'sockjs'
 nstatic = require 'node-static'
 config  = require './config/run'
 redis   = require 'redis'
-util    = require 'util'
 
-run_app = 'test'
+# export the libraries
+exports.libs = { Redis: redis, config: config }
 
-try 
-    Application = require './applications/' + run_app
-catch error
-    console.log "Application #{run_app} not found."
-    return
+sockjs_options = {
+    sockjs_url:       config.sock.client_url,
+    response_limit:   config.sock.response_limit,
+    websocket:        config.sock.websocket,
+    jsessionid:       config.sock.jsessionid,
+    heartbeat_delay:  config.sock.heartbeat_delay,
+    disconnect_delay: config.sock.disconnect_delay,
+    log: (s, e) ->
+        #console.log("Log: #{e}")
+}
 
-# simulate a connection
-Application.prototype.onConnect()
+sockjs_server = sockjs.createServer(sockjs_options)
 
-# simulate a message
-Application.prototype.onMessage ('Testing the application')
+payload_data = {}
 
-# simulate a disconnect
-Application.prototype.onDisconnect()
+sockjs_server.on "connection", (conn) ->
+
+    Application = false
+
+    conn.on "data", (message) ->
+        try
+            client_payload = JSON.parse(message)
+
+            if typeof client_payload is "object"
+                payload_data = client_payload
+                payload_data.session_start = Math.round(new Date().getTime() / 1000)
+
+                if typeof client_payload.application is "string"
+                    if Application is false
+                        try
+                            Application = require './applications/' + client_payload.application
+                            Application.prototype.onConnect()
+                        catch error
+                            console.log "Application %s not found.", client_payload.application
+                            return
+
+                if typeof client_payload.data is "object"
+                    if client_payload.data.message isnt "null" and Application isnt false
+                        Application.prototype.onMessage(client_payload.data.message)
+
+        catch Exception
+            console.log 'Error: Unknown action %s', Exception
+
+    conn.on "close", ->
+        unless Application is false
+            Application.prototype.onDisconnect()
+
+static_server = http.createServer()
+
+static_server.addListener "request", (req, res) ->
+  new nstatic.Server(__dirname).serve req, res
+
+static_server.addListener "upgrade", (req, res) ->
+  res.end()
+
+sockjs_server.installHandlers static_server,
+  prefix: config.sock.prefix
+
+try
+  static_server.listen config.sock.listen.port, config.sock.listen.host
+  console.log "INFO: %s - SockJS started listening", new Date()
+catch Exception
+  console.log "ERROR: %s - %s", new Date(), Exception
+
+process.once "exit", (code) ->
+  code = code or 0
+  console.log "NOTICE: %s - SockJS exiting with code %s", new Date(), code
+  process.exit code
+
+process.on "SIGINT", ->
+  process.exit 2
+
+process.on "SIGTERM", ->
+  process.exit 0
