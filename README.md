@@ -1,4 +1,4 @@
-experiments
-===========
+Coding experiments
+==================
 
-Experimental projects
+Just my playground repository to mess around with some programming languages.
